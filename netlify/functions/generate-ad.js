@@ -3,16 +3,30 @@ exports.handler = async (event) => {
     if (event.httpMethod !== "POST") {
       return {
         statusCode: 405,
-        body: JSON.stringify({ error: "Método não permitido." })
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          error: "Método não permitido."
+        })
       };
     }
 
-    const { product, audience, objective } = JSON.parse(event.body || "{}");
+    const body = JSON.parse(event.body || "{}");
+
+    const product = String(body.product || "").trim();
+    const audience = String(body.audience || "").trim();
+    const objective = String(body.objective || "").trim();
 
     if (!product || !audience || !objective) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: "Preencha todos os campos." })
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          error: "Preencha todos os campos."
+        })
       };
     }
 
@@ -21,11 +35,33 @@ exports.handler = async (event) => {
     if (!apiKey) {
       return {
         statusCode: 500,
+        headers: {
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify({
-          error: "A chave da IA ainda não está configurada no Netlify."
+          error: "OPENAI_API_KEY não configurada no Netlify."
         })
       };
     }
+
+    const prompt = `
+Você é um especialista em marketing digital.
+
+Crie um anúncio em português do Brasil para:
+
+Produto: ${product}
+Público-alvo: ${audience}
+Objetivo: ${objective}
+
+Entregue:
+1. Título chamativo
+2. Texto principal persuasivo
+3. 3 benefícios
+4. CTA (chamada para ação)
+
+Deixe o texto pronto para publicar no Instagram.
+Não invente características específicas do produto que não foram informadas.
+`;
 
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -34,20 +70,8 @@ exports.handler = async (event) => {
         "Authorization": `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: "gpt-5-mini",
-        input: `Crie um anúncio para vender este produto:
-
-Produto: ${product}
-Público: ${audience}
-Objetivo: ${objective}
-
-Crie:
-- Título chamativo
-- Texto principal persuasivo
-- Benefícios
-- Chamada para ação (CTA)
-
-Escreva em português do Brasil, pronto para publicar no Instagram.`
+        model: "gpt-5.6-luna",
+        input: prompt
       })
     });
 
@@ -56,8 +80,11 @@ Escreva em português do Brasil, pronto para publicar no Instagram.`
     if (!response.ok) {
       return {
         statusCode: response.status,
+        headers: {
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify({
-          error: data.error?.message || "Erro ao consultar a IA."
+          error: data.error?.message || "Erro ao consultar a OpenAI."
         })
       };
     }
@@ -68,15 +95,18 @@ Escreva em português do Brasil, pronto para publicar no Instagram.`
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        text: data.output_text || "Não foi possível gerar o anúncio."
+        text: data.output_text || "A IA não retornou texto."
       })
     };
 
   } catch (error) {
     return {
       statusCode: 500,
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify({
-        error: error.message || "Erro interno."
+        error: error.message || "Erro interno da função."
       })
     };
   }
