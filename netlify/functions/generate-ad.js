@@ -57,61 +57,85 @@ Entregue:
 1. Título chamativo
 2. Texto principal
 3. 3 benefícios
-4. CTA (chamada para ação)
+4. CTA
 
 Deixe o texto pronto para publicar no Instagram.
 Não invente características específicas do produto que não foram informadas.
 `;
 
-    const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=" +
-        encodeURIComponent(apiKey),
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
+    const models = [
+      "gemini-3.8-flash",
+      "gemini-3.6-flash"
+    ];
+
+    let lastError = "Erro ao consultar o Gemini.";
+
+    for (const model of models) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const response = await fetch(
+          "https://generativelanguage.googleapis.com/v1beta/models/" +
+            model +
+            ":generateContent?key=" +
+            encodeURIComponent(apiKey),
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              contents: [
                 {
-                  text: prompt
+                  parts: [
+                    {
+                      text: prompt
+                    }
+                  ]
                 }
               ]
-            }
-          ]
-        })
+            })
+          }
+        );
+
+        const data = await response.json();
+
+        if (response.ok) {
+          const text =
+            data.candidates?.[0]?.content?.parts?.[0]?.text ||
+            "O Gemini não retornou texto.";
+
+          return {
+            statusCode: 200,
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              text
+            })
+          };
+        }
+
+        lastError =
+          data.error?.message ||
+          "Erro ao consultar o Gemini.";
+
+        if (response.status !== 429 && response.status !== 503) {
+          break;
+        }
+
+        await new Promise((resolve) =>
+          setTimeout(resolve, 1500)
+        );
       }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return {
-        statusCode: response.status,
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          error:
-            data.error?.message ||
-            "Erro ao consultar o Gemini."
-        })
-      };
     }
 
-    const text =
-      data.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "O Gemini não retornou texto.";
-
     return {
-      statusCode: 200,
+      statusCode: 503,
       headers: {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        text
+        error:
+          "O Gemini está temporariamente ocupado. Tente novamente em alguns segundos."
       })
     };
   } catch (error) {
