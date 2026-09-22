@@ -30,7 +30,7 @@ exports.handler = async (event) => {
       };
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
       return {
@@ -39,7 +39,7 @@ exports.handler = async (event) => {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          error: "OPENAI_API_KEY não configurada no Netlify."
+          error: "GEMINI_API_KEY não configurada no Netlify."
         })
       };
     }
@@ -55,7 +55,7 @@ Objetivo: ${objective}
 
 Entregue:
 1. Título chamativo
-2. Texto principal persuasivo
+2. Texto principal
 3. 3 benefícios
 4. CTA (chamada para ação)
 
@@ -63,17 +63,27 @@ Deixe o texto pronto para publicar no Instagram.
 Não invente características específicas do produto que não foram informadas.
 `;
 
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "gpt-5-mini",
-        input: prompt
-      })
-    });
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
+        encodeURIComponent(apiKey),
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: prompt
+                }
+              ]
+            }
+          ]
+        })
+      }
+    );
 
     const data = await response.json();
 
@@ -84,10 +94,16 @@ Não invente características específicas do produto que não foram informadas.
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          error: data.error?.message || "Erro ao consultar a OpenAI."
+          error:
+            data.error?.message ||
+            "Erro ao consultar o Gemini."
         })
       };
     }
+
+    const text =
+      data.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "O Gemini não retornou texto.";
 
     return {
       statusCode: 200,
@@ -95,10 +111,9 @@ Não invente características específicas do produto que não foram informadas.
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        text: data.output_text || "A IA não retornou texto."
+        text
       })
     };
-
   } catch (error) {
     return {
       statusCode: 500,
