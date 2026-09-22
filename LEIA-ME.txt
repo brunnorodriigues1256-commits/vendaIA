@@ -1,0 +1,6 @@
+Pacote Venda IA com primeira IA real.
+
+A variável OPENAI_API_KEY já deve estar configurada no Netlify.
+Envie estes arquivos para um novo deploy do mesmo site/projeto.
+A função usa /.netlify/functions/generate-ad e mantém a chave no servidor.
+NUNCA coloque ou compartilhe a chave no HTML/JavaScript do navegador.
