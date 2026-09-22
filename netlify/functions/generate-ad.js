@@ -70,7 +70,7 @@ Não invente características específicas do produto que não foram informadas.
         "Authorization": `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: "gpt-5.6-luna",
+        model: "gpt-5-mini",
         input: prompt
       })
     });
